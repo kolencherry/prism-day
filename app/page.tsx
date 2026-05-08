@@ -152,7 +152,7 @@ export default function Home() {
 
     const link = document.createElement("a");
     link.href = dataUrl;
-    link.download = `obama-prism-${shape}-${background}.png`;
+    link.download = `prism-day-${shape}-${background}.png`;
     link.click();
   }
 

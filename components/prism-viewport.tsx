@@ -38,10 +38,10 @@ type VaporwaveScene = {
 };
 
 const placeholderTextureSize = 1024;
+const exportCanvasSize = 1600;
 const obamaPrismRotation: [number, number, number] = [0.08, -0.58, 0.02];
 const obamaPrismDisplayScale = 0.64;
 const obamaPrismExportScale = 0.82;
-const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export function PrismViewport({
   autoRotate,
@@ -312,6 +312,11 @@ export function PrismViewport({
     const previousRotation = mesh.rotation.clone();
     const previousPosition = mesh.position.clone();
     const previousScale = mesh.scale.clone();
+    const previousCameraAspect = camera.aspect;
+    const previousCameraPosition = camera.position.clone();
+    const previousCameraQuaternion = camera.quaternion.clone();
+    const previousPixelRatio = renderer.getPixelRatio();
+    const previousRendererSize = renderer.getSize(new THREE.Vector2());
     const previousFloorVisible = floor?.visible ?? false;
     const previousVaporwaveVisible = vaporwave?.group.visible ?? false;
 
@@ -323,6 +328,13 @@ export function PrismViewport({
     }
 
     applyShapePose(mesh, true);
+    mesh.position.set(0, 0, 0);
+    camera.aspect = 1;
+    camera.position.set(0, 1.05, 7.5);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(1);
+    renderer.setSize(exportCanvasSize, exportCanvasSize, false);
     if (exportBackground === "white") {
       scene.background = new THREE.Color(0xffffff);
       renderer.setClearColor(0xffffff, 1);
@@ -339,6 +351,12 @@ export function PrismViewport({
     mesh.position.copy(previousPosition);
     mesh.rotation.copy(previousRotation);
     mesh.scale.copy(previousScale);
+    camera.aspect = previousCameraAspect;
+    camera.position.copy(previousCameraPosition);
+    camera.quaternion.copy(previousCameraQuaternion);
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(previousPixelRatio);
+    renderer.setSize(previousRendererSize.x, previousRendererSize.y, false);
     if (floor) {
       floor.visible = previousFloorVisible;
     }
@@ -359,14 +377,10 @@ export function PrismViewport({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       role="application"
-      style={{ backgroundImage: `url("${publicAssetPath("/dither-gradient.png")}")` }}
+      style={{ backgroundImage: `url("dither-gradient.png")` }}
       aria-label="3D prism projection viewport"
     />
   );
-}
-
-function publicAssetPath(path: `/${string}`) {
-  return `${publicBasePath}${path}`;
 }
 
 function createGeometry(shape: ShapeKind) {
