@@ -41,6 +41,7 @@ const placeholderTextureSize = 1024;
 const obamaPrismRotation: [number, number, number] = [0.08, -0.58, 0.02];
 const obamaPrismDisplayScale = 0.64;
 const obamaPrismExportScale = 0.82;
+const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export function PrismViewport({
   autoRotate,
@@ -358,9 +359,14 @@ export function PrismViewport({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       role="application"
+      style={{ backgroundImage: `url("${publicAssetPath("/dither-gradient.png")}")` }}
       aria-label="3D prism projection viewport"
     />
   );
+}
+
+function publicAssetPath(path: `/${string}`) {
+  return `${publicBasePath}${path}`;
 }
 
 function createGeometry(shape: ShapeKind) {

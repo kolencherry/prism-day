@@ -220,7 +220,6 @@
 
   .obama-gradient-bg {
     background-color: #c01749;
-    background-image: url("/dither-gradient.png");
     background-repeat: no-repeat;
     background-size: 100% 100%;
     image-rendering: pixelated;
