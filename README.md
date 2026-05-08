@@ -1,4 +1,4 @@
-# Obama Prism
+# Prism Day
 
 A Vercel-ready Next.js app for projecting an uploaded portrait onto a pyramid, tetrahedron, cube, sphere, dodecahedron, or distyloid.
 
@@ -10,3 +10,5 @@ npm run dev
 ```
 
 Open `http://localhost:3000`, upload an image, then drag the 3D viewport to reposition the projection across the solid.
+
+Inspired by the Obama Prism/Obamium meme.
