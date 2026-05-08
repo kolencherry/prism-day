@@ -1,0 +1,244 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 181 70% 28%;
+    --foreground: 278 28% 7%;
+    --card: 292 20% 76%;
+    --card-foreground: 278 28% 7%;
+    --popover: 292 20% 76%;
+    --popover-foreground: 278 28% 7%;
+    --primary: 317 88% 54%;
+    --primary-foreground: 54 58% 95%;
+    --secondary: 179 64% 45%;
+    --secondary-foreground: 278 28% 7%;
+    --muted: 292 14% 68%;
+    --muted-foreground: 281 22% 22%;
+    --accent: 253 78% 38%;
+    --accent-foreground: 54 58% 95%;
+    --destructive: 350 83% 47%;
+    --destructive-foreground: 54 58% 95%;
+    --border: 281 17% 17%;
+    --input: 281 17% 17%;
+    --ring: 179 76% 55%;
+    --radius: 0rem;
+  }
+
+  .dark {
+    --background: 181 70% 28%;
+    --foreground: 278 28% 7%;
+    --card: 292 20% 76%;
+    --card-foreground: 278 28% 7%;
+    --popover: 292 20% 76%;
+    --popover-foreground: 278 28% 7%;
+    --primary: 317 88% 54%;
+    --primary-foreground: 54 58% 95%;
+    --secondary: 179 64% 45%;
+    --secondary-foreground: 278 28% 7%;
+    --muted: 292 14% 68%;
+    --muted-foreground: 281 22% 22%;
+    --accent: 253 78% 38%;
+    --accent-foreground: 54 58% 95%;
+    --destructive: 350 83% 47%;
+    --destructive-foreground: 54 58% 95%;
+    --border: 281 17% 17%;
+    --input: 281 17% 17%;
+    --ring: 179 76% 55%;
+    --radius: 0rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-size: 13px;
+    letter-spacing: 0;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    letter-spacing: 0;
+  }
+}
+
+@layer components {
+  .win95-desktop {
+    background:
+      linear-gradient(135deg, hsl(181 72% 26%) 0%, hsl(181 64% 22%) 38%, hsl(292 79% 16%) 100%),
+      radial-gradient(circle at 18px 18px, hsl(317 92% 60% / 0.28) 0 1px, transparent 1px);
+    background-size: auto, 18px 18px;
+  }
+
+  .win95-window,
+  .win95-panel {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border: 2px solid hsl(var(--border));
+    box-shadow:
+      inset 2px 2px 0 hsl(54 72% 97% / 0.76),
+      inset -2px -2px 0 hsl(281 18% 16% / 0.82);
+  }
+
+  .win95-inset {
+    background-color: hsl(281 24% 10%);
+    color: hsl(54 58% 92%);
+    border: 2px solid hsl(var(--input));
+    box-shadow:
+      inset 2px 2px 0 hsl(281 24% 8%),
+      inset -2px -2px 0 hsl(54 72% 97% / 0.24);
+  }
+
+  .win95-window {
+    box-shadow:
+      inset 2px 2px 0 hsl(54 72% 97% / 0.82),
+      inset -2px -2px 0 hsl(281 18% 12% / 0.9),
+      12px 14px 0 hsl(281 28% 5% / 0.36);
+  }
+
+  .win95-titlebar {
+    min-height: 27px;
+    background: linear-gradient(90deg, hsl(244 85% 25%) 0%, hsl(317 87% 42%) 54%, hsl(179 80% 38%) 100%) !important;
+    color: hsl(54 58% 97%) !important;
+    padding: 3px 3px 3px 6px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+  }
+
+  .win95-title-icon {
+    display: inline-flex;
+    width: 17px;
+    height: 17px;
+    align-items: center;
+    justify-content: center;
+    background: hsl(281 28% 7%);
+    border: 1px solid hsl(54 72% 97% / 0.7);
+    color: hsl(var(--primary));
+  }
+
+  .win95-menu {
+    display: flex;
+    gap: 1px;
+    border-bottom: 2px solid hsl(281 18% 18%);
+    padding: 2px 4px;
+    background: hsl(var(--card));
+  }
+
+  .win95-menu button {
+    min-height: 22px;
+    padding: 2px 9px;
+    color: hsl(var(--card-foreground));
+  }
+
+  .win95-menu button:hover {
+    background: hsl(179 65% 44%);
+    color: hsl(281 25% 8%);
+  }
+
+  .win95-fieldset {
+    border: 2px groove hsl(292 18% 86%);
+    padding: 14px 10px 11px;
+  }
+
+  .win95-fieldset > legend {
+    padding: 0 5px;
+    color: hsl(var(--card-foreground));
+    text-transform: none;
+  }
+
+  .win95-client {
+    background:
+      linear-gradient(180deg, hsl(284 21% 82%) 0%, hsl(291 19% 73%) 100%);
+    border-top: 2px solid hsl(54 72% 97% / 0.72);
+  }
+
+  .win95-viewport-frame {
+    background: hsl(281 24% 9%);
+    border: 2px solid hsl(var(--input));
+    box-shadow:
+      inset 2px 2px 0 hsl(281 24% 5%),
+      inset -2px -2px 0 hsl(54 72% 97% / 0.26);
+  }
+
+  .obama-gradient-bg {
+    background-color: #d22f65;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgb(255 245 202 / 0.34) 0 1px, transparent 1.2px),
+      radial-gradient(circle at 3px 3px, rgb(38 8 74 / 0.26) 0 1px, transparent 1.2px),
+      linear-gradient(180deg, #ff9b30 0%, #ef5b36 26%, #8a278c 62%, #c01749 100%);
+    background-size: 4px 4px, 4px 4px, 100% 100%;
+    background-position: 0 0, 0 0, center;
+  }
+
+  .win95-statusbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 4px;
+    border-top: 2px solid hsl(281 18% 18%);
+    background: hsl(var(--card));
+    padding: 4px;
+  }
+
+  .win95-statusbar span {
+    min-height: 22px;
+    border: 1px solid hsl(281 18% 32%);
+    box-shadow:
+      inset 1px 1px 0 hsl(281 18% 24% / 0.72),
+      inset -1px -1px 0 hsl(54 72% 97% / 0.62);
+    padding: 3px 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .win95-taskbar {
+    background: hsl(292 20% 72%);
+    border-top: 2px solid hsl(54 72% 97% / 0.8);
+    box-shadow: inset 0 1px 0 hsl(292 22% 90%);
+  }
+
+  .win95-task-button {
+    background: hsl(var(--card));
+    border: 2px solid hsl(var(--border));
+    box-shadow:
+      inset 2px 2px 0 hsl(54 72% 97% / 0.78),
+      inset -2px -2px 0 hsl(281 18% 14% / 0.82);
+  }
+
+  .win95-task-button:active,
+  .win95-task-button[data-active="true"] {
+    box-shadow:
+      inset 2px 2px 0 hsl(281 18% 14% / 0.82),
+      inset -2px -2px 0 hsl(54 72% 97% / 0.62);
+  }
+
+  .win95-desktop-icon {
+    color: hsl(54 58% 97%);
+    text-shadow: 1px 1px 0 hsl(281 28% 5%);
+  }
+}
+
+@layer utilities {
+  .grid-paper {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.32) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.32) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .pixelated {
+    image-rendering: pixelated;
+  }
+}
