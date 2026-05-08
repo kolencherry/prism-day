@@ -9,7 +9,7 @@ import { Frame } from "../node_modules/@react95/core/dist/esm/Frame/Frame.mjs";
 import { TitleBar } from "../node_modules/@react95/core/dist/esm/TitleBar/TitleBar.mjs";
 import {
   Box,
-  Download,
+  Clapperboard,
   FileImage,
   ImagePlus,
   Move,
@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { ExportBackground, PrismViewport, ShapeKind, TextureControls } from "@/components/prism-viewport";
+import { PrismViewport, type CaptureApi, type ExportBackground, type ShapeKind, type TextureControls } from "@/components/prism-viewport";
 
 const shapeOptions: Array<{ value: ShapeKind; label: string }> = [
   { value: "cube", label: "cube" },
@@ -32,6 +32,12 @@ const shapeOptions: Array<{ value: ShapeKind; label: string }> = [
   { value: "pyramid", label: "pyramid" },
   { value: "sphere", label: "sphere" },
   { value: "tetrahedron", label: "tetrahedron" },
+];
+
+const exportBackgroundOptions: Array<{ value: ExportBackground; label: string }> = [
+  { value: "alpha", label: "alpha" },
+  { value: "gradient", label: "gradient" },
+  { value: "white", label: "white" },
 ];
 
 const defaultControls: TextureControls = {
@@ -48,8 +54,10 @@ export default function Home() {
   const [controls, setControls] = useState<TextureControls>(defaultControls);
   const [autoRotate, setAutoRotate] = useState(false);
   const [isDropActive, setIsDropActive] = useState(false);
+  const [isExportingGif, setIsExportingGif] = useState(false);
+  const [exportBackground, setExportBackground] = useState<ExportBackground>("gradient");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const captureRef = useRef<((background: ExportBackground) => string | null) | null>(null);
+  const captureRef = useRef<CaptureApi | null>(null);
 
   useEffect(() => {
     return () => {
@@ -144,19 +152,42 @@ export default function Home() {
     setControls(defaultControls);
   }
 
-  function handleDownload(background: ExportBackground) {
-    const dataUrl = captureRef.current?.(background);
+  function handleDownload() {
+    const dataUrl = captureRef.current?.image(exportBackground);
     if (!dataUrl) {
       return;
     }
 
     const link = document.createElement("a");
     link.href = dataUrl;
-    link.download = `prism-day-${shape}-${background}.png`;
+    link.download = `prism-day-${shape}-${exportBackground}.png`;
     link.click();
   }
 
-  const handleCaptureReady = useCallback((capture: (background: ExportBackground) => string | null) => {
+  async function handleGifDownload() {
+    if (isExportingGif) {
+      return;
+    }
+
+    setIsExportingGif(true);
+    try {
+      const blob = await captureRef.current?.gif(exportBackground);
+      if (!blob) {
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `prism-day-${shape}-${exportBackground}-spin.gif`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 500);
+    } finally {
+      setIsExportingGif(false);
+    }
+  }
+
+  const handleCaptureReady = useCallback((capture: CaptureApi) => {
     captureRef.current = capture;
   }, []);
 
@@ -303,14 +334,32 @@ export default function Home() {
 
               <fieldset className="win95-fieldset space-y-3">
                 <legend>Export</legend>
+                <div className="space-y-2">
+                  <Label htmlFor="export-background">background</Label>
+                  <Select
+                    value={exportBackground}
+                    onValueChange={(value) => setExportBackground(value as ExportBackground)}
+                  >
+                    <SelectTrigger id="export-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {exportBackgroundOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant="secondary" onClick={() => handleDownload("white")}>
+                  <Button type="button" variant="secondary" onClick={handleDownload}>
                     <FileImage aria-hidden="true" />
-                    white bg
+                    static png
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => handleDownload("transparent")}>
-                    <Download aria-hidden="true" />
-                    alpha
+                  <Button type="button" variant="outline" disabled={isExportingGif} onClick={handleGifDownload}>
+                    <Clapperboard aria-hidden="true" />
+                    {isExportingGif ? "rendering" : "spinning gif"}
                   </Button>
                 </div>
               </fieldset>

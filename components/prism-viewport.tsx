@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { GIFEncoder, applyPalette, quantize, type GifPixelFormat } from "gifenc";
 import * as THREE from "three";
 
 export type ShapeKind = "pyramid" | "tetrahedron" | "cube" | "sphere" | "dodecahedron" | "distyloid";
@@ -12,14 +13,19 @@ export type TextureControls = {
   rotation: number;
 };
 
-export type ExportBackground = "white" | "transparent";
+export type ExportBackground = "alpha" | "gradient" | "white";
+
+export type CaptureApi = {
+  image: (background: ExportBackground) => string | null;
+  gif: (background: ExportBackground) => Promise<Blob | null>;
+};
 
 type PrismViewportProps = {
   autoRotate: boolean;
   controls: TextureControls;
   imageUrl: string | null;
   shape: ShapeKind;
-  onCaptureReady: (capture: (background: ExportBackground) => string | null) => void;
+  onCaptureReady: (capture: CaptureApi) => void;
   onControlsChange: (controls: TextureControls) => void;
 };
 
@@ -39,6 +45,9 @@ type VaporwaveScene = {
 
 const placeholderTextureSize = 1024;
 const exportCanvasSize = 1600;
+const gifCanvasSize = 640;
+const gifFrameCount = 32;
+const gifFrameDelayMs = 70;
 const obamaPrismRotation: [number, number, number] = [0.08, -0.58, 0.02];
 const obamaPrismDisplayScale = 0.64;
 const obamaPrismExportScale = 0.82;
@@ -64,6 +73,7 @@ export function PrismViewport({
   const initialShapeRef = useRef(shape);
   const vaporwaveRef = useRef<VaporwaveScene | null>(null);
   const floorRef = useRef<THREE.Mesh | null>(null);
+  const gradientImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     controlsRef.current = controls;
@@ -74,6 +84,16 @@ export function PrismViewport({
     autoRotateRef.current = autoRotate;
   }, [autoRotate]);
 
+  useEffect(() => {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = "dither-gradient.png";
+    gradientImageRef.current = image;
+    return () => {
+      gradientImageRef.current = null;
+    };
+  }, []);
+
   const createMaterial = useCallback((texture: THREE.Texture) => {
     return new THREE.MeshStandardMaterial({
       map: texture,
@@ -82,6 +102,177 @@ export function PrismViewport({
       side: THREE.FrontSide,
     });
   }, []);
+
+  const prepareExportRender = useCallback((exportBackground: ExportBackground, canvasSize: number) => {
+    const renderer = rendererRef.current;
+    const scene = sceneRef.current;
+    const camera = cameraRef.current;
+    const mesh = meshRef.current;
+    if (!renderer || !scene || !camera || !mesh) {
+      return null;
+    }
+
+    const floor = floorRef.current;
+    const vaporwave = vaporwaveRef.current;
+    const previousSceneBackground = scene.background;
+    const previousClearColor = new THREE.Color();
+    renderer.getClearColor(previousClearColor);
+    const previousClearAlpha = renderer.getClearAlpha();
+    const previousRotation = mesh.rotation.clone();
+    const previousPosition = mesh.position.clone();
+    const previousScale = mesh.scale.clone();
+    const previousCameraAspect = camera.aspect;
+    const previousCameraPosition = camera.position.clone();
+    const previousCameraQuaternion = camera.quaternion.clone();
+    const previousPixelRatio = renderer.getPixelRatio();
+    const previousRendererSize = renderer.getSize(new THREE.Vector2());
+    const previousFloorVisible = floor?.visible ?? false;
+    const previousVaporwaveVisible = vaporwave?.group.visible ?? false;
+
+    if (floor) {
+      floor.visible = false;
+    }
+    if (vaporwave) {
+      vaporwave.group.visible = false;
+    }
+
+    applyShapePose(mesh, true);
+    mesh.position.set(0, 0, 0);
+    camera.aspect = 1;
+    camera.position.set(0, 1.05, 7.5);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(1);
+    renderer.setSize(canvasSize, canvasSize, false);
+    scene.background = null;
+    renderer.setClearColor(0xffffff, 0);
+
+    return {
+      renderer,
+      scene,
+      camera,
+      mesh,
+      restore: () => {
+        scene.background = previousSceneBackground;
+        renderer.setClearColor(previousClearColor, previousClearAlpha);
+        mesh.position.copy(previousPosition);
+        mesh.rotation.copy(previousRotation);
+        mesh.scale.copy(previousScale);
+        camera.aspect = previousCameraAspect;
+        camera.position.copy(previousCameraPosition);
+        camera.quaternion.copy(previousCameraQuaternion);
+        camera.updateProjectionMatrix();
+        renderer.setPixelRatio(previousPixelRatio);
+        renderer.setSize(previousRendererSize.x, previousRendererSize.y, false);
+        if (floor) {
+          floor.visible = previousFloorVisible;
+        }
+        if (vaporwave) {
+          vaporwave.group.visible = previousVaporwaveVisible;
+        }
+        renderer.render(scene, camera);
+      },
+    };
+  }, []);
+
+  const captureMemeRender = useCallback(
+    (exportBackground: ExportBackground) => {
+      const exportState = prepareExportRender(exportBackground, exportCanvasSize);
+      if (!exportState) {
+        return null;
+      }
+
+      const { renderer, scene, camera, mesh, restore } = exportState;
+      try {
+        centerMeshInExport(mesh, camera);
+        renderer.render(scene, camera);
+        return composeExportFrame(
+          renderer.domElement,
+          exportBackground,
+          exportCanvasSize,
+          gradientImageRef.current,
+        ).toDataURL("image/png");
+      } finally {
+        restore();
+      }
+    },
+    [prepareExportRender],
+  );
+
+  const captureSpinningGif = useCallback(
+    async (exportBackground: ExportBackground) => {
+      const exportState = prepareExportRender(exportBackground, gifCanvasSize);
+      if (!exportState) {
+        return null;
+      }
+
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      const { renderer, scene, camera, mesh, restore } = exportState;
+      const frameCanvas = document.createElement("canvas");
+      frameCanvas.width = gifCanvasSize;
+      frameCanvas.height = gifCanvasSize;
+      const context = frameCanvas.getContext("2d", { willReadFrequently: true });
+      if (!context) {
+        restore();
+        return null;
+      }
+
+      const gif = GIFEncoder();
+      const baseRotation = mesh.rotation.clone();
+      const format: GifPixelFormat = exportBackground === "alpha" ? "rgba4444" : "rgb565";
+
+      try {
+        for (let frame = 0; frame < gifFrameCount; frame += 1) {
+          const progress = frame / gifFrameCount;
+          mesh.rotation.set(baseRotation.x, baseRotation.y + progress * Math.PI * 2, baseRotation.z);
+          centerMeshInExport(mesh, camera);
+          renderer.render(scene, camera);
+          paintExportBackground(context, exportBackground, gifCanvasSize, gradientImageRef.current);
+          context.drawImage(renderer.domElement, 0, 0, gifCanvasSize, gifCanvasSize);
+
+          const { data } = context.getImageData(0, 0, gifCanvasSize, gifCanvasSize);
+          const palette = quantize(data, 256, {
+            format,
+            oneBitAlpha: exportBackground === "alpha" ? 24 : false,
+          });
+          const index = applyPalette(data, palette, format);
+          const transparentIndex =
+            exportBackground === "alpha"
+              ? palette.findIndex((color) => color.length > 3 && color[3] === 0)
+              : -1;
+
+          gif.writeFrame(index, gifCanvasSize, gifCanvasSize, {
+            palette,
+            delay: gifFrameDelayMs,
+            repeat: 0,
+            transparent: transparentIndex >= 0,
+            transparentIndex: Math.max(0, transparentIndex),
+          });
+
+          if (frame % 4 === 3) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+          }
+        }
+
+        gif.finish();
+        const bytes = gif.bytes();
+        const gifBuffer = new ArrayBuffer(bytes.byteLength);
+        new Uint8Array(gifBuffer).set(bytes);
+        return new Blob([gifBuffer], { type: "image/gif" });
+      } finally {
+        restore();
+      }
+    },
+    [prepareExportRender],
+  );
+
+  useEffect(() => {
+    onCaptureReady({
+      image: captureMemeRender,
+      gif: captureSpinningGif,
+    });
+  }, [captureMemeRender, captureSpinningGif, onCaptureReady]);
 
   useEffect(() => {
     const host = containerRef.current;
@@ -180,8 +371,6 @@ export function PrismViewport({
 
     animate();
 
-    onCaptureReady((exportBackground) => captureMemeRender(exportBackground));
-
     return () => {
       resizeObserver.disconnect();
       if (frameRef.current) {
@@ -202,7 +391,7 @@ export function PrismViewport({
       vaporwaveRef.current = null;
       floorRef.current = null;
     };
-  }, [createMaterial, onCaptureReady]);
+  }, [createMaterial]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -294,80 +483,6 @@ export function PrismViewport({
     oldTexture?.dispose();
   }
 
-  function captureMemeRender(exportBackground: ExportBackground) {
-    const renderer = rendererRef.current;
-    const scene = sceneRef.current;
-    const camera = cameraRef.current;
-    const mesh = meshRef.current;
-    if (!renderer || !scene || !camera || !mesh) {
-      return null;
-    }
-
-    const floor = floorRef.current;
-    const vaporwave = vaporwaveRef.current;
-    const previousSceneBackground = scene.background;
-    const previousClearColor = new THREE.Color();
-    renderer.getClearColor(previousClearColor);
-    const previousClearAlpha = renderer.getClearAlpha();
-    const previousRotation = mesh.rotation.clone();
-    const previousPosition = mesh.position.clone();
-    const previousScale = mesh.scale.clone();
-    const previousCameraAspect = camera.aspect;
-    const previousCameraPosition = camera.position.clone();
-    const previousCameraQuaternion = camera.quaternion.clone();
-    const previousPixelRatio = renderer.getPixelRatio();
-    const previousRendererSize = renderer.getSize(new THREE.Vector2());
-    const previousFloorVisible = floor?.visible ?? false;
-    const previousVaporwaveVisible = vaporwave?.group.visible ?? false;
-
-    if (floor) {
-      floor.visible = false;
-    }
-    if (vaporwave) {
-      vaporwave.group.visible = false;
-    }
-
-    applyShapePose(mesh, true);
-    mesh.position.set(0, 0, 0);
-    camera.aspect = 1;
-    camera.position.set(0, 1.05, 7.5);
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
-    renderer.setPixelRatio(1);
-    renderer.setSize(exportCanvasSize, exportCanvasSize, false);
-    if (exportBackground === "white") {
-      scene.background = new THREE.Color(0xffffff);
-      renderer.setClearColor(0xffffff, 1);
-    } else {
-      scene.background = null;
-      renderer.setClearColor(0xffffff, 0);
-    }
-
-    renderer.render(scene, camera);
-    const dataUrl = renderer.domElement.toDataURL("image/png");
-
-    scene.background = previousSceneBackground;
-    renderer.setClearColor(previousClearColor, previousClearAlpha);
-    mesh.position.copy(previousPosition);
-    mesh.rotation.copy(previousRotation);
-    mesh.scale.copy(previousScale);
-    camera.aspect = previousCameraAspect;
-    camera.position.copy(previousCameraPosition);
-    camera.quaternion.copy(previousCameraQuaternion);
-    camera.updateProjectionMatrix();
-    renderer.setPixelRatio(previousPixelRatio);
-    renderer.setSize(previousRendererSize.x, previousRendererSize.y, false);
-    if (floor) {
-      floor.visible = previousFloorVisible;
-    }
-    if (vaporwave) {
-      vaporwave.group.visible = previousVaporwaveVisible;
-    }
-    renderer.render(scene, camera);
-
-    return dataUrl;
-  }
-
   return (
     <div
       ref={containerRef}
@@ -381,6 +496,158 @@ export function PrismViewport({
       aria-label="3D prism projection viewport"
     />
   );
+}
+
+function composeExportFrame(
+  sourceCanvas: HTMLCanvasElement,
+  background: ExportBackground,
+  size: number,
+  gradientImage: HTMLImageElement | null,
+) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return sourceCanvas;
+  }
+
+  paintExportBackground(context, background, size, gradientImage);
+  context.drawImage(sourceCanvas, 0, 0, size, size);
+  return canvas;
+}
+
+function paintExportBackground(
+  context: CanvasRenderingContext2D,
+  background: ExportBackground,
+  size: number,
+  gradientImage: HTMLImageElement | null,
+) {
+  context.clearRect(0, 0, size, size);
+
+  if (background === "alpha") {
+    return;
+  }
+
+  if (background === "white") {
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, size, size);
+    return;
+  }
+
+  context.imageSmoothingEnabled = false;
+  if (gradientImage?.complete && gradientImage.naturalWidth > 0) {
+    context.drawImage(gradientImage, 0, 0, size, size);
+    return;
+  }
+
+  paintFallbackDitherGradient(context, size);
+}
+
+function paintFallbackDitherGradient(context: CanvasRenderingContext2D, size: number) {
+  const imageData = context.createImageData(size, size);
+  const stops = [
+    { at: 0, color: [255, 143, 56] },
+    { at: 0.38, color: [251, 57, 126] },
+    { at: 0.72, color: [168, 45, 143] },
+    { at: 1, color: [205, 22, 74] },
+  ];
+  const bayer = [
+    0, 32, 8, 40, 2, 34, 10, 42,
+    48, 16, 56, 24, 50, 18, 58, 26,
+    12, 44, 4, 36, 14, 46, 6, 38,
+    60, 28, 52, 20, 62, 30, 54, 22,
+    3, 35, 11, 43, 1, 33, 9, 41,
+    51, 19, 59, 27, 49, 17, 57, 25,
+    15, 47, 7, 39, 13, 45, 5, 37,
+    63, 31, 55, 23, 61, 29, 53, 21,
+  ];
+
+  for (let y = 0; y < size; y += 1) {
+    const t = y / Math.max(1, size - 1);
+    const lowerStop = stops.findLast((stop) => stop.at <= t) ?? stops[0];
+    const upperStop = stops.find((stop) => stop.at >= t) ?? stops[stops.length - 1];
+    const span = Math.max(0.0001, upperStop.at - lowerStop.at);
+    const localT = (t - lowerStop.at) / span;
+    const threshold = (bayer[(y % 8) * 8] / 63 - 0.5) * 22;
+
+    for (let x = 0; x < size; x += 1) {
+      const pattern = (bayer[(y % 8) * 8 + (x % 8)] / 63 - 0.5) * 18 + threshold;
+      const index = (y * size + x) * 4;
+      for (let channel = 0; channel < 3; channel += 1) {
+        const raw = lowerStop.color[channel] + (upperStop.color[channel] - lowerStop.color[channel]) * localT;
+        imageData.data[index + channel] = Math.max(0, Math.min(255, Math.round((raw + pattern) / 17) * 17));
+      }
+      imageData.data[index + 3] = 255;
+    }
+  }
+
+  context.putImageData(imageData, 0, 0);
+}
+
+function centerMeshInExport(mesh: THREE.Mesh, camera: THREE.PerspectiveCamera) {
+  mesh.position.set(0, 0, 0);
+  mesh.updateMatrixWorld(true);
+  const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+  mesh.position.sub(center);
+  mesh.updateMatrixWorld(true);
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    const projectedCenter = getProjectedMeshCenter(mesh, camera);
+    if (!projectedCenter || (Math.abs(projectedCenter.x) < 0.002 && Math.abs(projectedCenter.y) < 0.002)) {
+      break;
+    }
+
+    const worldPosition = mesh.getWorldPosition(new THREE.Vector3());
+    const distance = camera.position.distanceTo(worldPosition);
+    const viewHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) * distance;
+    const viewWidth = viewHeight * camera.aspect;
+    const cameraRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const cameraUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+    mesh.position.addScaledVector(cameraRight, -projectedCenter.x * viewWidth * 0.5);
+    mesh.position.addScaledVector(cameraUp, -projectedCenter.y * viewHeight * 0.5);
+    mesh.updateMatrixWorld(true);
+  }
+}
+
+function getProjectedMeshCenter(mesh: THREE.Mesh, camera: THREE.PerspectiveCamera) {
+  const box = new THREE.Box3().setFromObject(mesh);
+  if (box.isEmpty()) {
+    return null;
+  }
+
+  const { min, max } = box;
+  const corners = [
+    new THREE.Vector3(min.x, min.y, min.z),
+    new THREE.Vector3(min.x, min.y, max.z),
+    new THREE.Vector3(min.x, max.y, min.z),
+    new THREE.Vector3(min.x, max.y, max.z),
+    new THREE.Vector3(max.x, min.y, min.z),
+    new THREE.Vector3(max.x, min.y, max.z),
+    new THREE.Vector3(max.x, max.y, min.z),
+    new THREE.Vector3(max.x, max.y, max.z),
+  ];
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const corner of corners) {
+    const projected = corner.project(camera);
+    if (!Number.isFinite(projected.x) || !Number.isFinite(projected.y)) {
+      continue;
+    }
+    minX = Math.min(minX, projected.x);
+    maxX = Math.max(maxX, projected.x);
+    minY = Math.min(minY, projected.y);
+    maxY = Math.max(maxY, projected.y);
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(maxX) || !Number.isFinite(minY) || !Number.isFinite(maxY)) {
+    return null;
+  }
+
+  return new THREE.Vector2((minX + maxX) * 0.5, (minY + maxY) * 0.5);
 }
 
 function createGeometry(shape: ShapeKind) {
