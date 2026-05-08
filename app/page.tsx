@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent, ReactNode } from "react";
 // React95 9.8.0 ships its built files under dist while the root export points at absent paths.
 // @ts-expect-error - the dist ESM files do not ship ambient TypeScript module declarations.
 import { Frame } from "../node_modules/@react95/core/dist/esm/Frame/Frame.mjs";
@@ -47,6 +47,7 @@ export default function Home() {
   const [shape, setShape] = useState<ShapeKind>("pyramid");
   const [controls, setControls] = useState<TextureControls>(defaultControls);
   const [autoRotate, setAutoRotate] = useState(false);
+  const [isDropActive, setIsDropActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const captureRef = useRef<((background: ExportBackground) => string | null) | null>(null);
 
@@ -57,6 +58,39 @@ export default function Home() {
       }
     };
   }, [imageUrl]);
+
+  const loadImageFile = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      return;
+    }
+
+    setImageUrl((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
+      }
+      return URL.createObjectURL(file);
+    });
+    setFileName(file.name || "pasted image");
+  }, []);
+
+  useEffect(() => {
+    function handleDocumentPaste(event: globalThis.ClipboardEvent) {
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      const file = getImageFromClipboard(event.clipboardData);
+      if (!file) {
+        return;
+      }
+
+      event.preventDefault();
+      loadImageFile(file);
+    }
+
+    window.addEventListener("paste", handleDocumentPaste);
+    return () => window.removeEventListener("paste", handleDocumentPaste);
+  }, [loadImageFile]);
 
   const transformReadout = useMemo(
     () =>
@@ -70,13 +104,36 @@ export default function Home() {
       return;
     }
 
-    setImageUrl((current) => {
-      if (current) {
-        URL.revokeObjectURL(current);
-      }
-      return URL.createObjectURL(file);
-    });
-    setFileName(file.name);
+    loadImageFile(file);
+    event.target.value = "";
+  }
+
+  function handleDrop(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setIsDropActive(false);
+    const file = getImageFromFileList(event.dataTransfer.files);
+    if (file) {
+      loadImageFile(file);
+    }
+  }
+
+  function handlePaste(event: ClipboardEvent<HTMLButtonElement>) {
+    const file = getImageFromClipboard(event.clipboardData);
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+    loadImageFile(file);
+  }
+
+  function handleDropzoneKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    fileInputRef.current?.click();
   }
 
   function updateControl<Key extends keyof TextureControls>(key: Key, value: TextureControls[Key]) {
@@ -123,7 +180,7 @@ export default function Home() {
               <Sparkles className="size-3.5" aria-hidden="true" />
             </span>
           }
-          title="PRISM.EXE - Prism Day"
+          title="PRISM.EXE - it's prism day"
         >
           <TitleBar.OptionsBox>
             <TitleBar.Minimize aria-label="Minimize" />
@@ -164,10 +221,27 @@ export default function Home() {
                   accept="image/*"
                   onChange={handleUpload}
                 />
-                <Button className="w-full justify-center" onClick={() => fileInputRef.current?.click()}>
-                  <ImagePlus aria-hidden="true" />
-                  embrace greatness
-                </Button>
+                <button
+                  className="win95-dropzone w-full"
+                  data-active={isDropActive}
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDropActive(true);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragLeave={() => setIsDropActive(false)}
+                  onDrop={handleDrop}
+                  onKeyDown={handleDropzoneKeyDown}
+                  onPaste={handlePaste}
+                >
+                  <span className="win95-dropzone-icon">
+                    <ImagePlus aria-hidden="true" />
+                  </span>
+                  <span className="font-bold">embrace greatness</span>
+                  <span className="text-[11px] text-muted-foreground">click / drop / paste</span>
+                </button>
                 <div className="win95-inset truncate px-3 py-2 text-[12px]">
                   {fileName}
                 </div>
@@ -296,6 +370,29 @@ export default function Home() {
       </div>
     </main>
   );
+}
+
+function getImageFromFileList(files: FileList) {
+  return Array.from(files).find((file) => file.type.startsWith("image/")) ?? null;
+}
+
+function getImageFromClipboard(data: DataTransfer | null) {
+  if (!data) {
+    return null;
+  }
+
+  for (const item of Array.from(data.items)) {
+    if (!item.type.startsWith("image/")) {
+      continue;
+    }
+
+    const file = item.getAsFile();
+    if (file) {
+      return file;
+    }
+  }
+
+  return getImageFromFileList(data.files);
 }
 
 function DesktopIcon({ children, label }: { children: ReactNode; label: string }) {

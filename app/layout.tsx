@@ -11,7 +11,7 @@ const w95 = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Obama Prism",
+  title: "it's prism day",
   description: "Project uploaded portraits onto pyramids and other 3D solids.",
 };
 

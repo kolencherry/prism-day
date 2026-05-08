@@ -41,9 +41,6 @@ const placeholderTextureSize = 1024;
 const obamaPrismRotation: [number, number, number] = [0.08, -0.58, 0.02];
 const obamaPrismDisplayScale = 0.64;
 const obamaPrismExportScale = 0.82;
-const distyloidRotation: [number, number, number] = [0, 0, 0];
-const distyloidDisplayScale = 0.7;
-const distyloidExportScale = 0.88;
 
 export function PrismViewport({
   autoRotate,
@@ -62,7 +59,6 @@ export function PrismViewport({
   const frameRef = useRef<number | null>(null);
   const controlsRef = useRef(controls);
   const autoRotateRef = useRef(autoRotate);
-  const shapeRef = useRef(shape);
   const dragRef = useRef<DragState | null>(null);
   const initialShapeRef = useRef(shape);
   const vaporwaveRef = useRef<VaporwaveScene | null>(null);
@@ -76,10 +72,6 @@ export function PrismViewport({
   useEffect(() => {
     autoRotateRef.current = autoRotate;
   }, [autoRotate]);
-
-  useEffect(() => {
-    shapeRef.current = shape;
-  }, [shape]);
 
   const createMaterial = useCallback((texture: THREE.Texture) => {
     return new THREE.MeshStandardMaterial({
@@ -143,7 +135,7 @@ export function PrismViewport({
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.visible = !isBackgroundSceneTest();
-    applyShapePose(mesh, initialShapeRef.current);
+    applyShapePose(mesh);
     scene.add(mesh);
     meshRef.current = mesh;
 
@@ -223,7 +215,7 @@ export function PrismViewport({
     nextMesh.castShadow = true;
     nextMesh.receiveShadow = true;
     nextMesh.visible = currentMesh.visible;
-    applyShapePose(nextMesh, shape);
+    applyShapePose(nextMesh);
     scene.remove(currentMesh);
     disposeMesh(currentMesh, false);
     scene.add(nextMesh);
@@ -329,7 +321,7 @@ export function PrismViewport({
       vaporwave.group.visible = false;
     }
 
-    applyShapePose(mesh, shapeRef.current, true);
+    applyShapePose(mesh, true);
     if (exportBackground === "white") {
       scene.background = new THREE.Color(0xffffff);
       renderer.setClearColor(0xffffff, 1);
@@ -399,14 +391,7 @@ function createGeometry(shape: ShapeKind) {
   return createPyramidGeometry();
 }
 
-function applyShapePose(mesh: THREE.Mesh, shape: ShapeKind, exportRender = false) {
-  if (shape === "distyloid") {
-    mesh.position.set(0, -0.02, 0);
-    mesh.rotation.set(...distyloidRotation);
-    mesh.scale.setScalar(exportRender ? distyloidExportScale : distyloidDisplayScale);
-    return;
-  }
-
+function applyShapePose(mesh: THREE.Mesh, exportRender = false) {
   mesh.position.set(0, -0.08, 0);
   mesh.rotation.set(...obamaPrismRotation);
   mesh.scale.setScalar(exportRender ? obamaPrismExportScale : obamaPrismDisplayScale);

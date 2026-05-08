@@ -158,6 +158,52 @@
     text-transform: none;
   }
 
+  .win95-dropzone {
+    display: grid;
+    min-height: 86px;
+    place-items: center;
+    gap: 4px;
+    border: 2px dashed hsl(var(--input));
+    background:
+      linear-gradient(135deg, hsl(292 20% 80%) 0%, hsl(292 20% 70%) 100%);
+    color: hsl(var(--card-foreground));
+    cursor: pointer;
+    box-shadow:
+      inset 2px 2px 0 hsl(54 72% 97% / 0.78),
+      inset -2px -2px 0 hsl(281 18% 14% / 0.82);
+    padding: 12px;
+    text-align: center;
+  }
+
+  .win95-dropzone:hover,
+  .win95-dropzone:focus-visible,
+  .win95-dropzone[data-active="true"] {
+    background:
+      linear-gradient(135deg, hsl(179 58% 63%) 0%, hsl(317 66% 68%) 100%);
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: -4px;
+  }
+
+  .win95-dropzone:active {
+    box-shadow:
+      inset 2px 2px 0 hsl(281 18% 14% / 0.82),
+      inset -2px -2px 0 hsl(54 72% 97% / 0.62);
+  }
+
+  .win95-dropzone-icon {
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    background: hsl(281 24% 10%);
+    border: 2px solid hsl(var(--border));
+    color: hsl(var(--primary));
+    box-shadow:
+      inset 1px 1px 0 hsl(54 72% 97% / 0.42),
+      inset -1px -1px 0 hsl(281 18% 5% / 0.8);
+  }
+
   .win95-client {
     background:
       linear-gradient(180deg, hsl(284 21% 82%) 0%, hsl(291 19% 73%) 100%);
@@ -173,13 +219,11 @@
   }
 
   .obama-gradient-bg {
-    background-color: #d22f65;
-    background-image:
-      radial-gradient(circle at 1px 1px, rgb(255 245 202 / 0.34) 0 1px, transparent 1.2px),
-      radial-gradient(circle at 3px 3px, rgb(38 8 74 / 0.26) 0 1px, transparent 1.2px),
-      linear-gradient(180deg, #ff9b30 0%, #ef5b36 26%, #8a278c 62%, #c01749 100%);
-    background-size: 4px 4px, 4px 4px, 100% 100%;
-    background-position: 0 0, 0 0, center;
+    background-color: #c01749;
+    background-image: url("/dither-gradient.png");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    image-rendering: pixelated;
   }
 
   .win95-statusbar {
