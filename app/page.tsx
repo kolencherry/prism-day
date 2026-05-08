@@ -270,7 +270,7 @@ export default function Home() {
                   <span className="win95-dropzone-icon">
                     <ImagePlus aria-hidden="true" />
                   </span>
-                  <span className="font-bold">embrace greatness</span>
+                  <span className="font-bold">ascend to greatness</span>
                   <span className="text-[11px] text-muted-foreground">click / drop / paste</span>
                 </button>
                 <div className="win95-inset truncate px-3 py-2 text-[12px]">
