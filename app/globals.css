@@ -128,12 +128,31 @@
     color: hsl(var(--primary));
   }
 
+  .win95-titlebar > div:first-of-type {
+    min-width: 0;
+    flex: 1 1 auto !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .win95-titlebar > div:last-child {
+    flex-shrink: 0;
+  }
+
   .win95-menu {
     display: flex;
     gap: 1px;
+    overflow-x: auto;
     border-bottom: 2px solid hsl(281 18% 18%);
     padding: 2px 4px;
     background: hsl(var(--card));
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .win95-menu::-webkit-scrollbar {
+    display: none;
   }
 
   .win95-menu button {
@@ -270,6 +289,36 @@
   .win95-desktop-icon {
     color: hsl(54 58% 97%);
     text-shadow: 1px 1px 0 hsl(281 28% 5%);
+  }
+
+  @media (max-width: 640px) {
+    .win95-window {
+      box-shadow:
+        inset 2px 2px 0 hsl(54 72% 97% / 0.82),
+        inset -2px -2px 0 hsl(281 18% 12% / 0.9),
+        4px 5px 0 hsl(281 28% 5% / 0.28);
+    }
+
+    .win95-titlebar {
+      min-height: 24px;
+      font-size: 12px !important;
+    }
+
+    .win95-statusbar {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .win95-statusbar span:nth-child(3) {
+      display: none;
+    }
+
+    .win95-taskbar {
+      height: 38px;
+    }
+
+    .win95-task-button {
+      min-width: 0;
+    }
   }
 }
 

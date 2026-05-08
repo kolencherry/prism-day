@@ -192,7 +192,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="win95-desktop min-h-screen overflow-x-hidden overflow-y-auto p-3 pb-12 text-card-foreground">
+    <main className="win95-desktop min-h-screen overflow-x-hidden overflow-y-auto p-1 pb-12 text-card-foreground sm:p-3">
       <div className="pointer-events-none fixed left-4 top-5 z-0 hidden w-20 flex-col gap-6 md:flex">
         <DesktopIcon label="Prism.exe">
           <Sparkles className="size-8 text-primary" aria-hidden="true" />
@@ -202,7 +202,7 @@ export default function Home() {
         </DesktopIcon>
       </div>
 
-      <Frame className="win95-window relative z-10 mx-auto flex h-[calc(100vh-54px)] min-h-[760px] w-full max-w-[1540px] flex-col overflow-hidden p-1">
+      <Frame className="win95-window relative z-10 mx-auto flex min-h-[calc(100svh-46px)] w-full max-w-[1540px] flex-col overflow-visible p-1 lg:h-[calc(100vh-54px)] lg:min-h-[760px] lg:overflow-hidden">
         <TitleBar
           active
           className="win95-titlebar"
@@ -229,8 +229,8 @@ export default function Home() {
         </nav>
 
         <div className="win95-client grid min-h-0 flex-1 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="min-h-0 overflow-y-auto border-b-2 border-border p-3 lg:border-b-0 lg:border-r-2">
-            <div className="flex min-h-full flex-col gap-4">
+          <aside className="order-2 min-h-0 overflow-visible border-t-2 border-border p-2 sm:p-3 lg:order-1 lg:overflow-y-auto lg:border-r-2 lg:border-t-0">
+            <div className="flex min-h-0 flex-col gap-3 sm:gap-4 lg:min-h-full">
               <div className="win95-inset flex items-center gap-3 px-3 py-2">
                 <div className="win95-panel flex size-10 items-center justify-center bg-card">
                   <Sparkles className="size-5 text-primary" aria-hidden="true" />
@@ -352,7 +352,7 @@ export default function Home() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Button type="button" variant="secondary" onClick={handleDownload}>
                     <FileImage aria-hidden="true" />
                     static png
@@ -375,11 +375,11 @@ export default function Home() {
             </div>
           </aside>
 
-          <section className="relative min-h-[620px] min-w-0 overflow-hidden p-3">
-            <div className="win95-viewport-frame relative h-full min-h-[620px] overflow-hidden">
-              <div className="win95-panel absolute left-3 top-3 z-10 flex items-center gap-2 bg-card px-3 py-1.5 text-[12px]">
+          <section className="order-1 relative min-w-0 overflow-hidden p-2 sm:p-3 lg:order-2 lg:min-h-[620px]">
+            <div className="win95-viewport-frame relative h-[min(70svh,calc(100vw-1.5rem))] min-h-[320px] overflow-hidden sm:h-[min(72svh,calc(100vw-2rem))] lg:h-full lg:min-h-[620px]">
+              <div className="win95-panel absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] items-center gap-2 bg-card px-2 py-1 text-[11px] sm:left-3 sm:top-3 sm:px-3 sm:py-1.5 sm:text-[12px]">
                 <Move className="size-4 text-primary" aria-hidden="true" />
-                drag surface to move image
+                <span className="truncate">drag surface to move image</span>
               </div>
               <div className="win95-panel absolute right-3 top-3 z-10 hidden items-center gap-2 bg-card px-3 py-1.5 text-[12px] md:flex">
                 <Box className="size-4 text-secondary" aria-hidden="true" />

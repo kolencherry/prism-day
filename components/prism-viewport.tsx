@@ -486,7 +486,7 @@ export function PrismViewport({
   return (
     <div
       ref={containerRef}
-      className={`h-full min-h-[620px] cursor-grab touch-none active:cursor-grabbing ${viewportClass}`}
+      className={`h-full min-h-0 cursor-grab touch-none active:cursor-grabbing ${viewportClass}`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
